@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fraud Detection Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background 0.3s, color 0.3s;
+            min-height: 100vh;
+            padding: 2rem 1.5rem;
+        }
+        body.dark {
+            background: radial-gradient(circle at 10% 20%, #1e2438, #0f1320);
+            color: #eef2ff;
+        }
+        body.light {
+            background: #f5f7fc;
+            color: #1e293b;
+        }
+        .row.g-4 { align-items: stretch; }
+        .row.g-4 .glass-card { height: 100%; }
+        .glass-card {
+            display: flex;
+            flex-direction: column;
+            border-radius: 32px;
+            transition: transform 0.2s, box-shadow 0.2s, background 0.3s, border 0.3s;
+        }
+        body.dark .glass-card {
+            background: rgba(30, 36, 56, 0.5);
+            backdrop-filter: blur(14px);
+            border: 0.5px solid rgba(176, 212, 244, 0.25);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+        }
+        body.light .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(100, 116, 139, 0.2);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+        }
+        .glass-card:hover {
+            transform: translateY(-3px);
+        }
+        body.dark .glass-card:hover {
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(176, 212, 244, 0.45);
+        }
+        body.light .glass-card:hover {
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
+            border-color: #94a3b8;
+        }
+        .chart-body { flex: 1; padding: 0.8rem 1rem 1rem 1rem; }
+        .header h1 {
+            font-weight: 550;
+            font-size: 1.7rem;
+            letter-spacing: -0.2px;
+        }
+        body.dark .header h1 { color: #eef2ff; }
+        body.light .header h1 { color: #0f172a; }
+        .sub {
+            font-size: 0.85rem;
+            border-left: 2px solid #B0D4F4;
+            padding-left: 0.75rem;
+        }
+        body.dark .sub { color: #a5b4cf; }
+        body.light .sub { color: #475569; }
+        .metric-tile {
+            text-align: center;
+            padding: 1rem 0.5rem;
+            cursor: help;
+        }
+        .metric-number { font-size: 2.2rem; font-weight: 550; line-height: 1.2; }
+        body.dark .metric-number { color: #f0f3ff; }
+        body.light .metric-number { color: #0f172a; }
+        .metric-label { font-size: 0.7rem; text-transform: uppercase; font-weight: 500; letter-spacing: 1.2px; margin-top: 8px; }
+        body.dark .metric-label { color: #b8c5e0; }
+        body.light .metric-label { color: #475569; }
+        .dyn-metric-value { font-size: 1.8rem; font-weight: 600; transition: color 0.2s ease; cursor: help; }
+        .dyn-metric-label { font-weight: 600; transition: color 0.2s ease; font-size: 1rem; margin-bottom: 0.25rem; cursor: help; }
+        .metric-high { color: #A8E6CF; }
+        .metric-mid { color: #FBC4B0; }
+        .metric-low { color: #F4A4A4; }
+        .metric-sub { font-size: 0.7rem; }
+        body.dark .metric-sub { color: #8ba0c2; }
+        body.light .metric-sub { color: #64748b; }
+        .threshold-chip {
+            backdrop-filter: blur(5px);
+            border-radius: 30px;
+            padding: 0.3rem 1rem;
+            font-size: 0.75rem;
+        }
+        body.dark .threshold-chip { background: rgba(176, 212, 244, 0.18); border: 0.5px solid rgba(176, 212, 244, 0.3); }
+        body.light .threshold-chip { background: rgba(100, 116, 139, 0.1); border: 1px solid #cbd5e1; }
+        .threshold-value { font-size: 1.5rem; font-weight: 600; transition: color 0.2s; }
+        .threshold-good { color: #A8E6CF; }
+        .threshold-mid { color: #FBC4B0; }
+        .threshold-bad { color: #F4A4A4; }
+        .chart-header {
+            padding: 1rem 1.5rem 0rem 1.5rem;
+            font-weight: 500;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+        body.dark .chart-header { color: #dce5ff; border-bottom: 1px solid rgba(176, 212, 244, 0.15); }
+        body.light .chart-header { color: #334155; border-bottom: 1px solid #e2e8f0; }
+        .chart-header-left { display: flex; align-items: center; gap: 10px; }
+        .chart-header i { font-size: 1.2rem; }
+        body.dark .chart-header i { color: #B0D4F4; }
+        body.light .chart-header i { color: #3b82f6; }
+        .plot-selector {
+            border-radius: 40px;
+            padding: 0.35rem 2rem 0.35rem 1rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 500;
+            outline: none;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            appearance: none;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+            background-repeat: no-repeat;
+            background-position: right 0.8rem center;
+            background-size: 14px;
+        }
+        body.dark .plot-selector { background: rgba(20, 25, 45, 0.9); border: 1px solid rgba(176, 212, 244, 0.4); color: #eef2ff; }
+        body.light .plot-selector { background: #ffffff; border: 1px solid #cbd5e1; color: #1e293b; }
+        [data-tooltip] { position: relative; cursor: help; border-bottom: 1px dotted rgba(176, 212, 244, 0.4); }
+        [data-tooltip]:before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 130%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #252e48;
+            color: #f0f3ff;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.15s;
+            backdrop-filter: blur(8px);
+            border: 0.5px solid rgba(176, 212, 244, 0.3);
+            font-family: 'Inter', sans-serif;
+        }
+        [data-tooltip]:hover:before { opacity: 1; }
+        .slider-container { padding: 0.5rem 1rem 1rem 1rem; }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: #323c5a;
+            border-radius: 5px;
+            outline: none;
+            transition: background 0.2s ease;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            margin-top: -7px;
+            transition: background 0.2s, box-shadow 0.2s;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        input[type="range"]:focus { outline: none; }
+        .slider-good input[type="range"]::-webkit-slider-thumb { background: #A8E6CF; box-shadow: 0 0 8px #A8E6CF; }
+        .slider-mid input[type="range"]::-webkit-slider-thumb { background: #FBC4B0; box-shadow: 0 0 6px #FBC4B0; }
+        .slider-bad input[type="range"]::-webkit-slider-thumb { background: #F4A4A4; box-shadow: 0 0 6px #F4A4A4; }
+        .slider-good input[type="range"]::-webkit-slider-runnable-track { background: linear-gradient(90deg, #A8E6CF, #5FD9B2); }
+        .slider-mid input[type="range"]::-webkit-slider-runnable-track { background: linear-gradient(90deg, #FBC4B0, #F7B787); }
+        .slider-bad input[type="range"]::-webkit-slider-runnable-track { background: linear-gradient(90deg, #F4A4A4, #E07A7A); }
+        .confusion-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 1rem; }
+        .confusion-table td { text-align: center; padding: 20px 16px; font-weight: 500; border: 1px solid rgba(255,255,255,0.15); vertical-align: middle; }
+        body.dark .confusion-table td { border: 1px solid rgba(255,255,255,0.15); }
+        body.light .confusion-table td { border: 1px solid #e2e8f0; }
+        .confusion-table th { padding: 12px 8px; font-weight: 500; font-size: 0.9rem; }
+        body.dark .confusion-table th { color: #b8c5e0; background: rgba(20, 25, 45, 0.5); }
+        body.light .confusion-table th { color: #475569; background: #f1f5f9; }
+        .true-positive, .true-negative { background: rgba(168, 230, 207, 0.25); }
+        .false-positive, .false-negative { background: rgba(244, 164, 164, 0.25); }
+        .cell-abs { font-size: 1.7rem; font-weight: 600; display: block; line-height: 1.2; }
+        .cell-pct { font-size: 0.8rem; opacity: 0.8; display: block; margin-top: 6px; }
+        .stats-footer { margin-top: 20px; padding: 12px 16px; border-radius: 24px; font-size: 0.85rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        body.dark .stats-footer { background: rgba(20, 25, 45, 0.6); border: 0.5px solid rgba(176, 212, 244, 0.25); }
+        body.light .stats-footer { background: #f8fafc; border: 1px solid #e2e8f0; }
+        .stats-footer span { font-weight: 600; }
+        body.dark .stats-footer span { color: #B0D4F4; }
+        body.light .stats-footer span { color: #3b82f6; }
+        .cost-slider { margin-top: 1rem; padding: 0.8rem; border-radius: 24px; }
+        body.dark .cost-slider { background: rgba(0,0,0,0.2); }
+        body.light .cost-slider { background: rgba(0,0,0,0.03); }
+        .recommendation-box { border-left: 4px solid #A8E6CF; padding: 0.8rem 1rem; border-radius: 16px; margin-top: 1rem; font-size: 0.85rem; }
+        body.dark .recommendation-box { background: rgba(168, 230, 207, 0.1); }
+        body.light .recommendation-box { background: #f1f8fe; }
+        .transaction-table { width: 100%; font-size: 0.75rem; border-collapse: collapse; }
+        .transaction-table th, .transaction-table td { padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; }
+        body.dark .transaction-table th { background: rgba(20, 25, 45, 0.8); }
+        body.light .transaction-table th { background: #e2e8f0; color: #0f172a; }
+        .table-container { max-height: 300px; overflow-y: auto; }
+        .badge-fraud { background: #F4A4A4; border-radius: 20px; padding: 2px 8px; font-weight: 600; }
+        .badge-normal { background: #A8E6CF; border-radius: 20px; padding: 2px 8px; font-weight: 600; }
+        body.dark .badge-fraud, body.dark .badge-normal { color: #1e2438; }
+        body.light .badge-fraud, body.light .badge-normal { color: #1e293b; }
+        .filter-buttons .btn-sm { font-size: 0.7rem; margin: 0 2px; border: none; }
+        body.dark .filter-buttons .btn-sm { background: rgba(176, 212, 244, 0.2); color: #eef2ff; }
+        body.light .filter-buttons .btn-sm { background: #e2e8f0; color: #1e293b; }
+        .filter-buttons .btn-sm.active { background: #B0D4F4; color: #0f1320; }
+        .theme-toggle, .lang-selector { cursor: pointer; margin-left: 15px; font-size: 1.2rem; }
+        body.dark .theme-toggle { color: #fbbf24; }
+        body.light .theme-toggle { color: #1e293b; }
+        .lang-selector select { background: transparent; border: none; font-weight: 500; cursor: pointer; }
+        body.dark .lang-selector select { color: #eef2ff; background: rgba(30,36,56,0.7); }
+        body.light .lang-selector select { color: #1e293b; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 20px; padding: 0.2rem 0.5rem; }
+        footer { text-align: center; margin-top: 2.5rem; font-size: 0.7rem; border-top: 1px solid rgba(176, 212, 244, 0.1); padding-top: 1.5rem; }
+        body.dark footer { color: #6f7c9b; }
+        body.light footer { color: #94a3b8; }
+        /* Fix for feature importance text overflow */
+        .js-plotly-plot .plotly .xtick, .js-plotly-plot .plotly .ytick { font-size: 11px; }
+    </style>
+</head>
+<body class="dark">
+<div class="container px-0 px-md-2">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div class="header">
+            <h1 data-i18n="dashboard_title">Fraud Detection Dashboard</h1>
+            <div class="sub mt-1" data-i18n="dashboard_subtitle">XGBoost on credit card transactions | Real-time risk monitoring</div>
+        </div>
+        <div class="d-flex align-items-center">
+            <div class="lang-selector me-3">
+                <select id="languageSelect">
+                    <option value="ru">🇷🇺 Русский</option>
+                    <option value="en" selected>🇬🇧 English</option>
+                    <option value="it">🇮🇹 Italiano</option>
+                    <option value="es">🇪🇸 Español</option>
+                    <option value="fr">🇫🇷 Français</option>
+                    <option value="de">🇩🇪 Deutsch</option>
+                </select>
+            </div>
+            <div class="theme-toggle" id="themeToggle">
+                <i class="fas fa-moon"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Метрики -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3">
+            <div class="glass-card metric-tile" data-tooltip-en="Precision: TP/(TP+FP)" data-tooltip-ru="Точность: TP/(TP+FP)" data-tooltip-it="Precisione: TP/(TP+FP)" data-tooltip-es="Precisión: TP/(TP+FP)" data-tooltip-fr="Précision: TP/(TP+FP)" data-tooltip-de="Präzision: TP/(TP+FP)">
+                <div class="metric-number" id="precisionVal">—</div>
+                <div class="metric-label" data-i18n="precision_label">precision</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card metric-tile" data-tooltip-en="Recall: TP/(TP+FN)" data-tooltip-ru="Полнота: TP/(TP+FN)" data-tooltip-it="Richiamo: TP/(TP+FN)" data-tooltip-es="Sensibilidad: TP/(TP+FN)" data-tooltip-fr="Rappel: TP/(TP+FN)" data-tooltip-de="Erinnerung: TP/(TP+FN)">
+                <div class="metric-number" id="recallVal">—</div>
+                <div class="metric-label" data-i18n="recall_label">recall</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card metric-tile" data-tooltip-en="F1-score: harmonic mean of precision and recall" data-tooltip-ru="F1-мера: гармоническое среднее точности и полноты" data-tooltip-it="Punteggio F1: media armonica" data-tooltip-es="Puntuación F1: media armónica" data-tooltip-fr="Score F1: moyenne harmonique" data-tooltip-de="F1-Wert: harmonisches Mittel">
+                <div class="metric-number" id="f1Val">—</div>
+                <div class="metric-label" data-i18n="f1_label">f1 score</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card metric-tile" data-tooltip-en="ROC AUC: area under ROC curve" data-tooltip-ru="ROC AUC: площадь под ROC-кривой" data-tooltip-it="ROC AUC: area sotto la curva ROC" data-tooltip-es="ROC AUC: área bajo la curva ROC" data-tooltip-fr="ROC AUC: aire sous la courbe ROC" data-tooltip-de="ROC AUC: Fläche unter der ROC-Kurve">
+                <div class="metric-number" id="aucVal">—</div>
+                <div class="metric-label" data-i18n="auc_label">roc auc</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Слайдер порога -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-12">
+            <div class="glass-card">
+                <div class="chart-header">
+                    <div class="chart-header-left"><i class="fas fa-sliders-h"></i> <span data-i18n="threshold_header">Decision threshold adjustment</span></div>
+                </div>
+                <div class="slider-container" id="sliderContainer">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span data-i18n="current_threshold">Current threshold:</span>
+                        <span class="threshold-value" id="currentThreshold">0.50</span>
+                        <button id="balanceBtn" class="btn btn-sm threshold-chip"><i class="fas fa-balance-scale"></i> <span data-i18n="balance_btn">Find balance</span></button>
+                    </div>
+                    <input type="range" id="thresholdSlider" min="0" max="1" step="0.01" value="0.50">
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div class="threshold-optimal"><i class="fas fa-magic me-1"></i> <span data-i18n="optimal_threshold">Optimal threshold (by recall):</span> <strong id="bestThresholdSpan">—</strong></div>
+                        <div id="qualityBadge" class="quality-indicator" data-tooltip-en="Average of Precision, Recall and F1" data-tooltip-ru="Среднее арифметическое точности, полноты и F1" data-tooltip-it="Media di Precisione, Richiamo e F1" data-tooltip-es="Promedio de Precisión, Sensibilidad y F1" data-tooltip-fr="Moyenne de Précision, Rappel et F1" data-tooltip-de="Durchschnitt von Präzision, Erinnerung und F1"><i class="fas fa-chart-simple"></i> <span data-i18n="quality">Quality:</span> <span id="qualityScore">—</span></div>
+                    </div>
+                    <div class="row mt-4 text-center">
+                        <div class="col-4" data-tooltip-en="Precision: TP/(TP+FP)" data-tooltip-ru="Точность: TP/(TP+FP)" data-tooltip-it="Precisione: TP/(TP+FP)" data-tooltip-es="Precisión: TP/(TP+FP)" data-tooltip-fr="Précision: TP/(TP+FP)" data-tooltip-de="Präzision: TP/(TP+FP)">
+                            <div id="precisionLabel" class="dyn-metric-label metric-mid" data-i18n="precision">Precision</div>
+                            <div id="dynPrecision" class="dyn-metric-value metric-mid">—</div>
+                            <div class="metric-sub" data-i18n="precision_sub">precision</div>
+                        </div>
+                        <div class="col-4" data-tooltip-en="Recall: TP/(TP+FN)" data-tooltip-ru="Полнота: TP/(TP+FN)" data-tooltip-it="Richiamo: TP/(TP+FN)" data-tooltip-es="Sensibilidad: TP/(TP+FN)" data-tooltip-fr="Rappel: TP/(TP+FN)" data-tooltip-de="Erinnerung: TP/(TP+FN)">
+                            <div id="recallLabel" class="dyn-metric-label metric-mid" data-i18n="recall">Recall</div>
+                            <div id="dynRecall" class="dyn-metric-value metric-mid">—</div>
+                            <div class="metric-sub" data-i18n="recall_sub">recall</div>
+                        </div>
+                        <div class="col-4" data-tooltip-en="F1 Score: harmonic mean" data-tooltip-ru="F1-мера: гармоническое среднее" data-tooltip-it="Punteggio F1: media armonica" data-tooltip-es="Puntuación F1: media armónica" data-tooltip-fr="Score F1: moyenne harmonique" data-tooltip-de="F1-Wert: harmonisches Mittel">
+                            <div id="f1Label" class="dyn-metric-label metric-mid" data-i18n="f1">F1 Score</div>
+                            <div id="dynF1" class="dyn-metric-value metric-mid">—</div>
+                            <div class="metric-sub" data-i18n="f1_sub">F1-score</div>
+                        </div>
+                    </div>
+                    <div class="cost-slider mt-3">
+                        <div class="d-flex justify-content-between">
+                            <label><i class="fas fa-dollar-sign"></i> <span data-i18n="cost_fp">False Positive cost</span></label>
+                            <span id="costFPVal">100</span> <span data-i18n="currency">units</span>
+                        </div>
+                        <input type="range" id="costFPSlider" min="0" max="500" step="10" value="100">
+                        <div class="d-flex justify-content-between mt-2">
+                            <label><i class="fas fa-exclamation-triangle"></i> <span data-i18n="cost_fn">Missed fraud cost</span></label>
+                            <span id="costFNVal">1000</span> <span data-i18n="currency">units</span>
+                        </div>
+                        <input type="range" id="costFNSlider" min="0" max="5000" step="50" value="1000">
+                        <div class="mt-2 text-center">
+                            <strong><span data-i18n="total_cost">Total error cost at current threshold:</span></strong> <span id="totalCost">0</span> <span data-i18n="currency">units</span>
+                        </div>
+                    </div>
+                    <div id="recommendationBox" class="recommendation-box">
+                        <i class="fas fa-lightbulb"></i> <strong><span data-i18n="recommendation_title">Recommendation to operator:</span></strong> <span id="recommendationText" data-i18n="rec_default">—</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Матрица ошибок и распределение -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="glass-card">
+                <div class="chart-header"><div class="chart-header-left"><i class="fas fa-th"></i> <span data-i18n="confusion_matrix_title">Confusion Matrix</span></div></div>
+                <div class="chart-body">
+                    <table class="confusion-table" id="confusionTable">
+                        <thead><tr><th></th><th data-i18n="pred_not_fraud">Predicted: not fraud</th><th data-i18n="pred_fraud">Predicted: fraud</th></tr></thead>
+                        <tbody>
+                            <tr><th data-i18n="actual_not_fraud">Actual: not fraud</th><td id="tnCell" class="true-negative"><span class="cell-abs">—</span><span class="cell-pct"></span></td><td id="fpCell" class="false-positive"><span class="cell-abs">—</span><span class="cell-pct"></span></tr>
+                            <tr><th data-i18n="actual_fraud">Actual: fraud</th><td id="fnCell" class="false-negative"><span class="cell-abs">—</span><span class="cell-pct"></span><td id="tpCell" class="true-positive"><span class="cell-abs">—</span><span class="cell-pct"></span></tr>
+                        </tbody>
+                    </table>
+                    <div class="stats-footer">
+                        <div><i class="fas fa-check-circle me-1"></i> <span data-i18n="normal_count">Normal:</span> <span id="normalCount">—</span> (<span id="normalPercent">—</span>%)</div>
+                        <div><i class="fas fa-exclamation-triangle me-1"></i> <span data-i18n="fraud_count">Fraud:</span> <span id="fraudCount">—</span> (<span id="fraudPercent">—</span>%)</div>
+                        <div><i class="fas fa-database me-1"></i> <span data-i18n="total_trans">Total transactions:</span> <span id="totalCount">—</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="glass-card">
+                <div class="chart-header">
+                    <div class="chart-header-left"><i class="fas fa-chart-bar"></i> <span data-i18n="prob_dist_title">Probability distribution</span></div>
+                    <select id="plotTypeSelect" class="plot-selector"><option value="density" data-i18n="density">Density</option><option value="violin" data-i18n="violin">Violin</option></select>
+                </div>
+                <div class="chart-body" id="distPlot" style="height: 380px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ROC и PR -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-6"><div class="glass-card"><div class="chart-header"><i class="fas fa-chart-line"></i> <span data-i18n="roc_title">ROC Curve</span></div><div class="chart-body"><div id="rocPlot" style="height: 360px;"></div></div></div></div>
+        <div class="col-md-6"><div class="glass-card"><div class="chart-header"><i class="fas fa-chart-area"></i> <span data-i18n="pr_title">Precision-Recall Curve</span></div><div class="chart-body"><div id="prPlot" style="height: 360px;"></div></div></div></div>
+    </div>
+
+    <!-- Feature importance -->
+    <div class="row mb-4"><div class="col-12"><div class="glass-card"><div class="chart-header"><i class="fas fa-star"></i> <span data-i18n="feat_imp_title">Top‑10 Feature Importance (Gain)</span></div><div class="chart-body"><div id="impPlot" style="height: 430px;"></div></div></div></div></div>
+
+    <!-- Таблица транзакций -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="glass-card">
+                <div class="chart-header">
+                    <div class="chart-header-left"><i class="fas fa-list-ul"></i> <span data-i18n="sample_table_title">Transaction samples (stratified)</span></div>
+                    <div class="filter-buttons">
+                        <button class="btn-sm filter-btn active" data-filter="all" data-i18n="filter_all">All</button>
+                        <button class="btn-sm filter-btn" data-filter="fraud" data-i18n="filter_fraud">Fraud (real)</button>
+                        <button class="btn-sm filter-btn" data-filter="normal" data-i18n="filter_normal">Not fraud</button>
+                        <span class="ms-2" id="rowCountSpan">(0 records)</span>
+                    </div>
+                </div>
+                <div class="chart-body">
+                    <div class="table-container">
+                        <table class="transaction-table" id="transTable">
+                            <thead>
+                                <tr>
+                                    <th data-sort="index" data-i18n="th_id">#</th>
+                                    <th data-sort="prob" data-i18n="th_prob">Fraud prob.</th>
+                                    <th data-sort="true" data-i18n="th_true">Real class</th>
+                                    <th data-sort="pred" data-i18n="th_pred">Prediction</th>
+                                    <th data-sort="amount" data-i18n="th_amount">Amount (scaled)</th>
+                                    <th data-i18n="th_features">Features (first 2)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2 text-muted small"><i class="fas fa-info-circle"></i> <span data-i18n="table_hint">Click on header to sort. Sample includes all frauds (up to 50) + random normals.</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Данные от Flask
+    const metrics = {{ metrics | tojson }};
+    const yTest = {{ y_test | tojson }};
+    const yProba = {{ y_proba | tojson }};
+    const sampleTransactions = {{ sample_transactions | tojson }};
+
+    // Translations
+        const translations = {
+    ru: {
+        dashboard_title: "Дашборд обнаружения мошенничества",
+        dashboard_subtitle: "XGBoost на данных о кредитных картах | Мониторинг рисков в реальном времени",
+        precision_label: "точность", recall_label: "полнота", f1_label: "f1 мера", auc_label: "roc auc",
+        threshold_header: "Настройка порога принятия решения",
+        current_threshold: "Текущий порог:",
+        reset_optimal: "Сбросить к оптимальному",
+        balance_btn: "Найти баланс",   // <-- НОВАЯ КНОПКА
+        optimal_threshold: "Оптимальный порог (по полноте):",
+        quality: "Качество:",
+        precision: "Точность", recall: "Полнота", f1: "F1-мера",
+        precision_sub: "точность", recall_sub: "полнота", f1_sub: "F1-мера",
+        cost_fp: "Стоимость ложного срабатывания (FP)", cost_fn: "Стоимость пропущенного мошенничества (FN)",
+        total_cost: "Общая стоимость ошибок при текущем пороге:",
+        currency: "у.е.",
+        recommendation_title: "Рекомендация оператору:",
+        rec_default: "—",
+        confusion_matrix_title: "Матрица ошибок",
+        pred_not_fraud: "Предсказано: не мошенник", pred_fraud: "Предсказано: мошенник",
+        actual_not_fraud: "Реально: не мошенник", actual_fraud: "Реально: мошенник",
+        normal_count: "Нормальные:", fraud_count: "Мошеннические:", total_trans: "Всего транзакций:",
+        prob_dist_title: "Распределение вероятностей",
+        density: "Плотность", violin: "Скрипичный",
+        roc_title: "ROC-кривая", pr_title: "Precision-Recall кривая",
+        feat_imp_title: "Топ‑10 важности признаков (Gain)",
+        sample_table_title: "Примеры транзакций (стратифицированная выборка)",
+        filter_all: "Все", filter_fraud: "Мошенничество (реальные)", filter_normal: "Не мошенничество",
+        th_id: "#", th_prob: "Вероятность мош.", th_true: "Реальный класс", th_pred: "Предсказание", th_amount: "Сумма (масшт.)", th_features: "Признаки (первые 2)",
+        table_hint: "Нажмите на заголовок для сортировки. Выборка включает все мошеннические транзакции (до 50) + случайные нормальные.",
+        rec_low_precision: "Низкая точность, много ложных тревог. Рассмотрите повышение порога.",
+        rec_low_recall: "Низкая полнота, много пропущенных мошенников. Понизьте порог.",
+        rec_good: "Текущий порог обеспечивает хорошее качество.",
+        rec_moderate: "Текущий порог даёт средний баланс. Используйте калькулятор стоимости.",
+        rec_cost_suggestion: "Для минимизации финансовых потерь рекомендуемый порог: "
+    },
+    en: {
+        dashboard_title: "Fraud Detection Dashboard",
+        dashboard_subtitle: "XGBoost on credit card transactions | Real-time risk monitoring",
+        precision_label: "precision", recall_label: "recall", f1_label: "f1 score", auc_label: "roc auc",
+        threshold_header: "Decision threshold adjustment",
+        current_threshold: "Current threshold:",
+        reset_optimal: "Reset to optimal",
+        balance_btn: "Find balance",   // <-- НОВАЯ КНОПКА
+        optimal_threshold: "Optimal threshold (by recall):",
+        quality: "Quality:",
+        precision: "Precision", recall: "Recall", f1: "F1 Score",
+        precision_sub: "precision", recall_sub: "recall", f1_sub: "F1-score",
+        cost_fp: "False Positive cost", cost_fn: "Missed fraud cost",
+        total_cost: "Total error cost at current threshold:",
+        currency: "units",
+        recommendation_title: "Recommendation to operator:",
+        rec_default: "—",
+        confusion_matrix_title: "Confusion Matrix",
+        pred_not_fraud: "Predicted: not fraud", pred_fraud: "Predicted: fraud",
+        actual_not_fraud: "Actual: not fraud", actual_fraud: "Actual: fraud",
+        normal_count: "Normal:", fraud_count: "Fraud:", total_trans: "Total transactions:",
+        prob_dist_title: "Probability distribution",
+        density: "Density", violin: "Violin",
+        roc_title: "ROC Curve", pr_title: "Precision-Recall Curve",
+        feat_imp_title: "Top‑10 Feature Importance (Gain)",
+        sample_table_title: "Transaction samples (stratified)",
+        filter_all: "All", filter_fraud: "Fraud (real)", filter_normal: "Not fraud",
+        th_id: "#", th_prob: "Fraud prob.", th_true: "Real class", th_pred: "Prediction", th_amount: "Amount (scaled)", th_features: "Features (first 2)",
+        table_hint: "Click on header to sort. Sample includes all frauds (up to 50) + random normals.",
+        rec_low_precision: "Low precision, many false alarms. Consider raising threshold.",
+        rec_low_recall: "Low recall, many missed frauds. Lower threshold to increase detection.",
+        rec_good: "Current threshold gives good balance.",
+        rec_moderate: "Current threshold gives moderate balance. Use cost calculator to find optimal.",
+        rec_cost_suggestion: "To minimize financial loss, recommended threshold: "
+    },
+    it: {
+        dashboard_title: "Dashboard rilevamento frodi",
+        dashboard_subtitle: "XGBoost su transazioni con carta di credito | Monitoraggio rischi in tempo reale",
+        precision_label: "precisione", recall_label: "richiamo", f1_label: "punteggio f1", auc_label: "roc auc",
+        threshold_header: "Regolazione soglia decisionale",
+        current_threshold: "Soglia attuale:",
+        reset_optimal: "Reimposta ottimale",
+        balance_btn: "Trova equilibrio",
+        optimal_threshold: "Soglia ottimale (per richiamo):",
+        quality: "Qualità:",
+        precision: "Precisione", recall: "Richiamo", f1: "Punteggio F1",
+        precision_sub: "precisione", recall_sub: "richiamo", f1_sub: "F1-score",
+        cost_fp: "Costo falso positivo", cost_fn: "Costo frode persa",
+        total_cost: "Costo totale errori con soglia attuale:",
+        currency: "unità",
+        recommendation_title: "Raccomandazione operatore:",
+        rec_default: "—",
+        confusion_matrix_title: "Matrice di confusione",
+        pred_not_fraud: "Previsto: non frode", pred_fraud: "Previsto: frode",
+        actual_not_fraud: "Reale: non frode", actual_fraud: "Reale: frode",
+        normal_count: "Normali:", fraud_count: "Frodi:", total_trans: "Totale transazioni:",
+        prob_dist_title: "Distribuzione probabilità",
+        density: "Densità", violin: "Violino",
+        roc_title: "Curva ROC", pr_title: "Curva Precision-Recall",
+        feat_imp_title: "Top‑10 Importanza caratteristiche (Gain)",
+        sample_table_title: "Esempi di transazioni (campionamento stratificato)",
+        filter_all: "Tutti", filter_fraud: "Frode (reale)", filter_normal: "Non frode",
+        th_id: "#", th_prob: "Prob. frode", th_true: "Classe reale", th_pred: "Previsione", th_amount: "Importo (scalato)", th_features: "Caratteristiche (prime 2)",
+        table_hint: "Clicca sull'intestazione per ordinare. Il campione include tutte le frodi (max 50) + normali casuali.",
+        rec_low_precision: "Precisione bassa, molti falsi allarmi. Considera di aumentare la soglia.",
+        rec_low_recall: "Richiamo basso, molte frodi perse. Abbassa la soglia per aumentare la rilevazione.",
+        rec_good: "La soglia attuale offre un buon equilibrio.",
+        rec_moderate: "La soglia attuale dà un equilibrio moderato. Usa il calcolatore dei costi.",
+        rec_cost_suggestion: "Per ridurre le perdite finanziarie, soglia raccomandata: "
+    },
+    es: {
+        dashboard_title: "Panel de detección de fraudes",
+        dashboard_subtitle: "XGBoost en transacciones con tarjeta de crédito | Monitoreo de riesgos en tiempo real",
+        precision_label: "precisión", recall_label: "sensibilidad", f1_label: "puntuación f1", auc_label: "roc auc",
+        threshold_header: "Ajuste del umbral de decisión",
+        current_threshold: "Umbral actual:",
+        reset_optimal: "Restablecer óptimo",
+        balance_btn: "Encontrar equilibrio",
+        optimal_threshold: "Umbral óptimo (por sensibilidad):",
+        quality: "Calidad:",
+        precision: "Precisión", recall: "Sensibilidad", f1: "Puntuación F1",
+        precision_sub: "precisión", recall_sub: "sensibilidad", f1_sub: "F1-score",
+        cost_fp: "Costo de falso positivo", cost_fn: "Costo de fraude perdido",
+        total_cost: "Costo total de errores con umbral actual:",
+        currency: "unidades",
+        recommendation_title: "Recomendación al operador:",
+        rec_default: "—",
+        confusion_matrix_title: "Matriz de confusión",
+        pred_not_fraud: "Predicho: no fraude", pred_fraud: "Predicho: fraude",
+        actual_not_fraud: "Real: no fraude", actual_fraud: "Real: fraude",
+        normal_count: "Normales:", fraud_count: "Fraudes:", total_trans: "Total transacciones:",
+        prob_dist_title: "Distribución de probabilidades",
+        density: "Densidad", violin: "Violín",
+        roc_title: "Curva ROC", pr_title: "Curva Precision-Recall",
+        feat_imp_title: "Top‑10 Importancia de características (Gain)",
+        sample_table_title: "Ejemplos de transacciones (muestreo estratificado)",
+        filter_all: "Todos", filter_fraud: "Fraude (real)", filter_normal: "No fraude",
+        th_id: "#", th_prob: "Prob. fraude", th_true: "Clase real", th_pred: "Predicción", th_amount: "Monto (escalado)", th_features: "Características (primeras 2)",
+        table_hint: "Haga clic en el encabezado para ordenar. La muestra incluye todos los fraudes (hasta 50) + normales aleatorios.",
+        rec_low_precision: "Precisión baja, muchas falsas alarmas. Considere aumentar el umbral.",
+        rec_low_recall: "Sensibilidad baja, muchos fraudes perdidos. Reduzca el umbral para aumentar la detección.",
+        rec_good: "El umbral actual ofrece un buen equilibrio.",
+        rec_moderate: "El umbral actual ofrece un equilibrio moderado. Use la calculadora de costos.",
+        rec_cost_suggestion: "Para minimizar pérdidas financieras, umbral recomendado: "
+    },
+    fr: {
+        dashboard_title: "Tableau de bord détection de fraude",
+        dashboard_subtitle: "XGBoost sur transactions par carte de crédit | Surveillance des risques en temps réel",
+        precision_label: "précision", recall_label: "rappel", f1_label: "score f1", auc_label: "roc auc",
+        threshold_header: "Réglage du seuil de décision",
+        current_threshold: "Seuil actuel :",
+        reset_optimal: "Réinitialiser optimal",
+        balance_btn: "Trouver l'équilibre",
+        optimal_threshold: "Seuil optimal (par rappel) :",
+        quality: "Qualité :",
+        precision: "Précision", recall: "Rappel", f1: "Score F1",
+        precision_sub: "précision", recall_sub: "rappel", f1_sub: "F1-score",
+        cost_fp: "Coût faux positif", cost_fn: "Coût fraude manquée",
+        total_cost: "Coût total des erreurs au seuil actuel :",
+        currency: "unités",
+        recommendation_title: "Recommandation opérateur :",
+        rec_default: "—",
+        confusion_matrix_title: "Matrice de confusion",
+        pred_not_fraud: "Prédit : non frauduleux", pred_fraud: "Prédit : frauduleux",
+        actual_not_fraud: "Réel : non frauduleux", actual_fraud: "Réel : frauduleux",
+        normal_count: "Normaux :", fraud_count: "Fraudes :", total_trans: "Total transactions :",
+        prob_dist_title: "Distribution des probabilités",
+        density: "Densité", violin: "Violon",
+        roc_title: "Courbe ROC", pr_title: "Courbe Précision-Rappel",
+        feat_imp_title: "Top‑10 Importance des caractéristiques (Gain)",
+        sample_table_title: "Exemples de transactions (échantillonnage stratifié)",
+        filter_all: "Tous", filter_fraud: "Fraude (réelle)", filter_normal: "Non frauduleux",
+        th_id: "#", th_prob: "Prob. fraude", th_true: "Classe réelle", th_pred: "Prédiction", th_amount: "Montant (normalisé)", th_features: "Caractéristiques (2 premières)",
+        table_hint: "Cliquez sur l'en-tête pour trier. L'échantillon inclut toutes les fraudes (jusqu'à 50) + normaux aléatoires.",
+        rec_low_precision: "Faible précision, beaucoup de fausses alertes. Envisagez d'augmenter le seuil.",
+        rec_low_recall: "Faible rappel, beaucoup de fraudes manquées. Abaissez le seuil pour augmenter la détection.",
+        rec_good: "Le seuil actuel offre un bon équilibre.",
+        rec_moderate: "Le seuil actuel offre un équilibre modéré. Utilisez le calculateur de coûts.",
+        rec_cost_suggestion: "Pour minimiser les pertes financières, seuil recommandé : "
+    },
+    de: {
+        dashboard_title: "Dashboard Betrugserkennung",
+        dashboard_subtitle: "XGBoost auf Kreditkartentransaktionen | Echtzeit-Risikomonitoring",
+        precision_label: "Präzision", recall_label: "Erinnerung", f1_label: "F1-Wert", auc_label: "ROC-AUC",
+        threshold_header: "Anpassung des Entscheidungsschwellwerts",
+        current_threshold: "Aktueller Schwellwert:",
+        reset_optimal: "Auf optimal zurücksetzen",
+        balance_btn: "Gleichgewicht finden",
+        optimal_threshold: "Optimaler Schwellwert (nach Erinnerung):",
+        quality: "Qualität:",
+        precision: "Präzision", recall: "Erinnerung", f1: "F1-Wert",
+        precision_sub: "Präzision", recall_sub: "Erinnerung", f1_sub: "F1-Wert",
+        cost_fp: "Kosten für falsch positiv", cost_fn: "Kosten für verpassten Betrug",
+        total_cost: "Gesamtkosten der Fehler beim aktuellen Schwellwert:",
+        currency: "Einheiten",
+        recommendation_title: "Empfehlung für Operator:",
+        rec_default: "—",
+        confusion_matrix_title: "Konfusionsmatrix",
+        pred_not_fraud: "Vorhersage: kein Betrug", pred_fraud: "Vorhersage: Betrug",
+        actual_not_fraud: "Tatsächlich: kein Betrug", actual_fraud: "Tatsächlich: Betrug",
+        normal_count: "Normal:", fraud_count: "Betrug:", total_trans: "Transaktionen insgesamt:",
+        prob_dist_title: "Wahrscheinlichkeitsverteilung",
+        density: "Dichte", violin: "Violine",
+        roc_title: "ROC-Kurve", pr_title: "Präzisions-Erinnerungs-Kurve",
+        feat_imp_title: "Top‑10 Merkmalswichtigkeit (Gain)",
+        sample_table_title: "Transaktionsbeispiele (geschichtete Stichprobe)",
+        filter_all: "Alle", filter_fraud: "Betrug (echt)", filter_normal: "Kein Betrug",
+        th_id: "#", th_prob: "Betrugswahrsch.", th_true: "Echte Klasse", th_pred: "Vorhersage", th_amount: "Betrag (skaliert)", th_features: "Merkmale (erste 2)",
+        table_hint: "Klicken Sie auf den Kopf, um zu sortieren. Die Stichprobe umfasst alle Betrugsfälle (bis zu 50) + zufällige Normale.",
+        rec_low_precision: "Niedrige Präzision, viele Fehlalarme. Erwägen Sie, den Schwellwert zu erhöhen.",
+        rec_low_recall: "Niedrige Erinnerung, viele verpasste Betrugsfälle. Senken Sie den Schwellwert, um die Erkennung zu verbessern.",
+        rec_good: "Der aktuelle Schwellwert bietet eine gute Balance.",
+        rec_moderate: "Der aktuelle Schwellwert bietet eine moderate Balance. Nutzen Sie den Kostenrechner.",
+        rec_cost_suggestion: "Um finanzielle Verluste zu minimieren, empfohlener Schwellwert: "
+    }
+    };
+    // Apply language to static text and tooltips
+    let currentLang = 'en';
+    function applyLanguage(lang) {
+        currentLang = lang;
+        const t = translations[lang] || translations.en;
+        // Update text content for elements with data-i18n
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (t[key] && el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA') {
+                el.innerHTML = t[key];
+            } else if (t[key] && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+                el.placeholder = t[key];
+            }
+        });
+        // Update tooltips (data-tooltip-xx attributes)
+        document.querySelectorAll('[data-tooltip-en]').forEach(el => {
+            const tooltipKey = `data-tooltip-${lang}`;
+            const tooltipText = el.getAttribute(tooltipKey);
+            if (tooltipText) {
+                el.setAttribute('data-tooltip', tooltipText);
+            } else {
+                // fallback to english
+                const enText = el.getAttribute('data-tooltip-en');
+                if (enText) el.setAttribute('data-tooltip', enText);
+            }
+        });
+        // Update recommendation text (if already set)
+        const recSpan = document.getElementById('recommendationText');
+        if (recSpan && recSpan.innerText !== "—") {
+            // we will refresh recommendation when threshold changes anyway
+        }
+    }
+
+    // Theme toggle
+    const themeToggle = document.getElementById('themeToggle');
+    const body = document.body;
+    themeToggle.addEventListener('click', () => {
+        if (body.classList.contains('dark')) {
+            body.classList.remove('dark');
+            body.classList.add('light');
+            themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+        } else {
+            body.classList.remove('light');
+            body.classList.add('dark');
+            themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+        }
+    });
+
+    // Language selector
+    const langSelect = document.getElementById('languageSelect');
+    langSelect.addEventListener('change', (e) => {
+        applyLanguage(e.target.value);
+        // refresh recommendation text
+        const threshold = parseFloat(document.getElementById('thresholdSlider').value);
+        const {precision, recall, f1} = computeMetrics(threshold);
+        const totalCost = computeTotalCost(threshold);
+        updateRecommendation(precision, recall, f1, totalCost, threshold);
+    });
+    applyLanguage('en'); // default
+
+    // Fill static metrics
+    document.getElementById('precisionVal').innerText = metrics.precision;
+    document.getElementById('recallVal').innerText = metrics.recall;
+    document.getElementById('f1Val').innerText = metrics.f1;
+    document.getElementById('aucVal').innerText = metrics.roc_auc;
+    document.getElementById('bestThresholdSpan').innerText = metrics.best_threshold;
+
+    // Plotly plots with automargin for feature importance
+    const roc = {{ roc_json | safe }};
+    Plotly.newPlot('rocPlot', roc.data, roc.layout, {responsive: true, displayModeBar: false});
+    const pr = {{ pr_json | safe }};
+    Plotly.newPlot('prPlot', pr.data, pr.layout, {responsive: true, displayModeBar: false});
+    const imp = {{ imp_json | safe }};
+    // Add automargin to layout
+    if (imp.layout) {
+        imp.layout.margin = imp.layout.margin || {};
+        imp.layout.margin.r = 100;  // increase right margin
+        imp.layout.automargin = true;
+    }
+    Plotly.newPlot('impPlot', imp.data, imp.layout, {responsive: true, displayModeBar: false});
+
+    // Helper functions
+    function computeMetrics(threshold) {
+        let tp=0, tn=0, fp=0, fn=0;
+        for (let i=0; i<yTest.length; i++) {
+            let pred = yProba[i] >= threshold ? 1 : 0;
+            if (yTest[i]===1 && pred===1) tp++;
+            else if (yTest[i]===0 && pred===0) tn++;
+            else if (yTest[i]===0 && pred===1) fp++;
+            else if (yTest[i]===1 && pred===0) fn++;
+        }
+        const precision = tp/(tp+fp)||0;
+        const recall = tp/(tp+fn)||0;
+        const f1 = (2*precision*recall)/(precision+recall)||0;
+        return {tp, tn, fp, fn, precision, recall, f1};
+    }
+
+    function computeTotalCost(threshold) {
+        const {fp, fn} = computeMetrics(threshold);
+        const costFP = parseInt(document.getElementById('costFPSlider').value);
+        const costFN = parseInt(document.getElementById('costFNSlider').value);
+        return fp*costFP + fn*costFN;
+    }
+
+    function setColorForElement(el, val) {
+        if (!el) return;
+        el.classList.remove('metric-high','metric-mid','metric-low');
+        if (val>=0.75) el.classList.add('metric-high');
+        else if (val>=0.5) el.classList.add('metric-mid');
+        else el.classList.add('metric-low');
+    }
+
+    function updateThresholdColorByQuality(quality) {
+        const span = document.getElementById('currentThreshold');
+        span.classList.remove('threshold-good','threshold-mid','threshold-bad');
+        if (quality>=0.75) span.classList.add('threshold-good');
+        else if (quality>=0.5) span.classList.add('threshold-mid');
+        else span.classList.add('threshold-bad');
+    }
+
+    function updateSliderColor(quality) {
+        const container = document.getElementById('sliderContainer');
+        container.classList.remove('slider-good','slider-mid','slider-bad');
+        if (quality>=0.75) container.classList.add('slider-good');
+        else if (quality>=0.5) container.classList.add('slider-mid');
+        else container.classList.add('slider-bad');
+    }
+
+    let currentPlotType = 'density';
+    function drawDistribution(threshold, quality) {
+        const probaNonFraud = yProba.filter((_,i)=>yTest[i]===0);
+        const probaFraud = yProba.filter((_,i)=>yTest[i]===1);
+        let traces = [];
+        let layout = {
+            paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: body.classList.contains('dark') ? '#b7c4dd' : '#1e293b' },
+            xaxis: { title: currentLang === 'ru' ? 'Предсказанная вероятность мошенничества' : 'Predicted fraud probability', range: [0,1], gridcolor: 'rgba(0,0,0,0.06)' },
+            yaxis: { title: '', gridcolor: 'rgba(0,0,0,0.06)' },
+            legend: { orientation: 'h', yanchor: 'bottom', y:1.02, xanchor:'right', x:1 },
+            margin: { l:50, r:20, t:40, b:40 },
+            shapes: []
+        };
+        if (currentPlotType === 'density') {
+            traces.push({ x: probaNonFraud, name: currentLang==='ru'?'Не мошенничество':'Not fraud', type: 'histogram', histnorm: 'probability density', opacity:0.65, marker: { color: '#B0E4D4' }, nbinsx:35 });
+            traces.push({ x: probaFraud, name: currentLang==='ru'?'Мошенничество':'Fraud', type: 'histogram', histnorm: 'probability density', opacity:0.7, marker: { color: '#FBC4B0' }, nbinsx:35 });
+            layout.yaxis.title = currentLang==='ru' ? 'Плотность' : 'Density';
+            layout.barmode = 'overlay';
+        } else {
+            traces.push({ y: probaNonFraud, name: currentLang==='ru'?'Не мошенничество':'Not fraud', type: 'violin', box: { visible: true }, meanline: { visible: true }, line: { color: '#B0E4D4' }, fillcolor: 'rgba(176,228,212,0.3)', points: false });
+            traces.push({ y: probaFraud, name: currentLang==='ru'?'Мошенничество':'Fraud', type: 'violin', box: { visible: true }, meanline: { visible: true }, line: { color: '#FBC4B0' }, fillcolor: 'rgba(251,196,176,0.3)', points: false });
+            layout.yaxis.title = currentLang==='ru' ? 'Вероятность' : 'Probability';
+        }
+        let lineColor = quality>=0.75 ? '#A8E6CF' : (quality>=0.5 ? '#FBC4B0' : '#F4A4A4');
+        layout.shapes.push({ type: 'line', x0: threshold, y0: 0, x1: threshold, y1: 1, xref: 'x', yref: 'paper', line: { color: lineColor, width: 2.5, dash: 'dash' } });
+        Plotly.newPlot('distPlot', traces, layout, {responsive: true, displayModeBar: false});
+    }
+
+    let currentThreshold = 0.5;
+    let costFP = 100, costFN = 1000;
+
+    function findBestCostThreshold() {
+        let bestTh = metrics.best_threshold;
+        let bestCost = Infinity;
+        for (let t=0; t<=1; t+=0.01) {
+            const {fp, fn} = computeMetrics(t);
+            const totalCost = fp*costFP + fn*costFN;
+            if (totalCost < bestCost) { bestCost = totalCost; bestTh = t; }
+        }
+        return bestTh;
+    }
+
+    function updateRecommendation(precision, recall, f1, totalCost, threshold) {
+        const t = translations[currentLang] || translations.en;
+        let recText = "";
+        if (precision < 0.5 && recall > 0.7) recText = t.rec_low_precision;
+        else if (recall < 0.5 && precision > 0.7) recText = t.rec_low_recall;
+        else if (f1 > 0.8) recText = t.rec_good;
+        else recText = t.rec_moderate;
+        const bestCostTh = findBestCostThreshold();
+        if (Math.abs(bestCostTh - threshold) > 0.05) {
+            recText += ` ${t.rec_cost_suggestion} ${bestCostTh.toFixed(2)}.`;
+        }
+        document.getElementById('recommendationText').innerText = recText;
+    }
+
+    function updateUI(threshold) {
+        const {tp, tn, fp, fn, precision, recall, f1} = computeMetrics(threshold);
+        const total = tp+tn+fp+fn;
+        const normalReal = tn+fp;
+        const fraudReal = tp+fn;
+        const normalPercentTotal = (normalReal/total*100).toFixed(2);
+        const fraudPercentTotal = (fraudReal/total*100).toFixed(2);
+        const quality = (precision+recall+f1)/3;
+
+        document.getElementById('dynPrecision').innerText = precision.toFixed(4);
+        document.getElementById('dynRecall').innerText = recall.toFixed(4);
+        document.getElementById('dynF1').innerText = f1.toFixed(4);
+        setColorForElement(document.getElementById('dynPrecision'), precision);
+        setColorForElement(document.getElementById('dynRecall'), recall);
+        setColorForElement(document.getElementById('dynF1'), f1);
+        setColorForElement(document.getElementById('precisionLabel'), precision);
+        setColorForElement(document.getElementById('recallLabel'), recall);
+        setColorForElement(document.getElementById('f1Label'), f1);
+        document.getElementById('qualityScore').innerText = quality.toFixed(3);
+        updateSliderColor(quality);
+        updateThresholdColorByQuality(quality);
+
+        const normalTotal = tn+fp;
+        const fraudTotal = tp+fn;
+        const tnPct = normalTotal>0 ? (tn/normalTotal*100).toFixed(2) : 0;
+        const fpPct = normalTotal>0 ? (fp/normalTotal*100).toFixed(2) : 0;
+        const tpPct = fraudTotal>0 ? (tp/fraudTotal*100).toFixed(2) : 0;
+        const fnPct = fraudTotal>0 ? (fn/fraudTotal*100).toFixed(2) : 0;
+        const updateCell = (cellId, absValue, pctValue) => {
+            const cell = document.getElementById(cellId);
+            if (!cell) return;
+            const absSpan = cell.querySelector('.cell-abs');
+            const pctSpan = cell.querySelector('.cell-pct');
+            if (absSpan) absSpan.innerText = absValue;
+            if (pctSpan) pctSpan.innerText = `(${pctValue}%)`;
+        };
+        updateCell('tnCell', tn, tnPct);
+        updateCell('fpCell', fp, fpPct);
+        updateCell('fnCell', fn, fnPct);
+        updateCell('tpCell', tp, tpPct);
+        document.getElementById('normalCount').innerText = normalReal;
+        document.getElementById('normalPercent').innerText = normalPercentTotal;
+        document.getElementById('fraudCount').innerText = fraudReal;
+        document.getElementById('fraudPercent').innerText = fraudPercentTotal;
+        document.getElementById('totalCount').innerText = total;
+
+        const totalCost = fp*costFP + fn*costFN;
+        document.getElementById('totalCost').innerText = totalCost;
+        updateRecommendation(precision, recall, f1, totalCost, threshold);
+        drawDistribution(threshold, quality);
+    }
+
+    // Event listeners
+    const slider = document.getElementById('thresholdSlider');
+    const thresholdSpan = document.getElementById('currentThreshold');
+    slider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        thresholdSpan.innerText = val.toFixed(2);
+        currentThreshold = val;
+        updateUI(val);
+    });
+    document.getElementById('plotTypeSelect').addEventListener('change', (e) => {
+        currentPlotType = e.target.value;
+        drawDistribution(currentThreshold, parseFloat(document.getElementById('qualityScore').innerText));
+    });
+    const costFPSlider = document.getElementById('costFPSlider');
+    const costFNSlider = document.getElementById('costFNSlider');
+    costFPSlider.addEventListener('input', (e) => {
+        costFP = parseInt(e.target.value);
+        document.getElementById('costFPVal').innerText = costFP;
+        updateUI(currentThreshold);
+    });
+    costFNSlider.addEventListener('input', (e) => {
+        costFN = parseInt(e.target.value);
+        document.getElementById('costFNVal').innerText = costFN;
+        updateUI(currentThreshold);
+    });
+
+    // Table logic
+    let currentFilter = 'all';
+    let currentSort = { field: 'index', asc: true };
+    function renderTransactionTable() {
+        let filtered = [...sampleTransactions];
+        if (currentFilter === 'fraud') filtered = filtered.filter(t => t.true_class === 1);
+        if (currentFilter === 'normal') filtered = filtered.filter(t => t.true_class === 0);
+        filtered.sort((a,b) => {
+            let valA, valB;
+            if (currentSort.field === 'index') { valA = a.index; valB = b.index; }
+            else if (currentSort.field === 'prob') { valA = a.prob_fraud; valB = b.prob_fraud; }
+            else if (currentSort.field === 'true') { valA = a.true_class; valB = b.true_class; }
+            else if (currentSort.field === 'pred') { valA = a.pred_class; valB = b.pred_class; }
+            else if (currentSort.field === 'amount') { valA = a.amount_log || 0; valB = b.amount_log || 0; }
+            else return 0;
+            if (valA < valB) return currentSort.asc ? -1 : 1;
+            if (valA > valB) return currentSort.asc ? 1 : -1;
+            return 0;
+        });
+        document.getElementById('rowCountSpan').innerText = `(${filtered.length} records)`;
+        const tbody = document.getElementById('transTableBody');
+        tbody.innerHTML = '';
+        if (filtered.length === 0) {
+            const row = tbody.insertRow();
+            const cell = row.insertCell(0);
+            cell.colSpan = 6;
+            cell.innerText = currentLang==='ru' ? 'Нет транзакций, соответствующих фильтру.' : 'No transactions match filter.';
+            cell.style.textAlign = 'center';
+            return;
+        }
+        filtered.forEach(t => {
+            const row = tbody.insertRow();
+            row.insertCell(0).innerText = t.index;
+            row.insertCell(1).innerHTML = `<strong>${t.prob_fraud.toFixed(3)}</strong>`;
+            const fraudText = currentLang==='ru' ? 'Мошенник' : 'Fraud';
+            const normalText = currentLang==='ru' ? 'Не мошенник' : 'Not fraud';
+            row.insertCell(2).innerHTML = t.true_class === 1 ? `<span class="badge-fraud">${fraudText}</span>` : `<span class="badge-normal">${normalText}</span>`;
+            row.insertCell(3).innerHTML = t.pred_class === 1 ? `<span class="badge-fraud">${fraudText}</span>` : `<span class="badge-normal">${normalText}</span>`;
+            row.insertCell(4).innerText = (t.amount_log || 0).toFixed(2);
+            const keys = Object.keys(t).filter(k => !['index','true_class','prob_fraud','pred_class','amount_log'].includes(k));
+            const feat1 = keys[0] ? `${keys[0]}=${t[keys[0]].toFixed(2)}` : '—';
+            const feat2 = keys[1] ? `${keys[1]}=${t[keys[1]].toFixed(2)}` : '—';
+            row.insertCell(5).innerHTML = `${feat1}, ${feat2}`;
+        });
+    }
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            renderTransactionTable();
+        });
+    });
+    document.querySelectorAll('#transTable th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+            const field = th.dataset.sort;
+            if (currentSort.field === field) currentSort.asc = !currentSort.asc;
+            else { currentSort.field = field; currentSort.asc = true; }
+            renderTransactionTable();
+        });
+    });
+    document.getElementById('balanceBtn').addEventListener('click', () => {
+    let bestScore = 0;
+    let bestTh = 0.5;
+    for (let th = 0.01; th <= 0.99; th += 0.01) {
+        const {precision, recall, f1} = computeMetrics(th);
+        const score = (precision + recall + f1) / 3;
+        if (score > bestScore) {
+            bestScore = score;
+            bestTh = th;
+        }
+    }
+    document.getElementById('thresholdSlider').value = bestTh;
+    document.getElementById('currentThreshold').innerText = bestTh.toFixed(2);
+    currentThreshold = bestTh;
+    updateUI(bestTh);
+});
+    updateUI(0.5);
+    renderTransactionTable();
+</script>
+</body>
+</html>

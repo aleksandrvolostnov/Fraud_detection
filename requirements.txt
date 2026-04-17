@@ -1,0 +1,10 @@
+flask
+plotly
+pandas
+numpy
+joblib
+scikit-learn
+xgboost
+pyarrow
+lightgbm
+imbalanced-learn
