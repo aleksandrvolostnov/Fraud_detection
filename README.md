@@ -1,4 +1,4 @@
-# 🕵️‍♂️ Fraud Detection Dashboard
+# Fraud Detection Dashboard
 
 **XGBoost + Flask + Plotly**  
 Интерактивный веб-дашборд для выявления мошеннических транзакций по кредитным картам.  
@@ -6,7 +6,7 @@
 
 ---
 
-## 📊 Статистика проекта
+## Статистика проекта
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Flask](https://img.shields.io/badge/Flask-2.3-black)
@@ -20,7 +20,7 @@
 
 ---
 
-## 🚀 Технологический стек
+## Технологический стек
 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)
@@ -39,7 +39,7 @@
 
 | Проект | Описание | Стек | Ссылка |
 |--------|----------|------|--------|
-| 🕵️ **Fraud Detection Dashboard** | Веб-дашборд для обнаружения мошеннических транзакций с настройкой порога и оценкой стоимости ошибок | ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white) ![Flask](https://img.shields.io/badge/Flask-000000?logo=flask&logoColor=white) ![XGBoost](https://img.shields.io/badge/XGBoost-FF6600?logo=xgboost&logoColor=white) ![Plotly](https://img.shields.io/badge/Plotly-3F4F75?logo=plotly&logoColor=white) | [GitHub](https://github.com/aleksandrvolostnov/Fraud_detection) |
+| **Fraud Detection Dashboard** | Веб-дашборд для обнаружения мошеннических транзакций с настройкой порога и оценкой стоимости ошибок | ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white) ![Flask](https://img.shields.io/badge/Flask-000000?logo=flask&logoColor=white) ![XGBoost](https://img.shields.io/badge/XGBoost-FF6600?logo=xgboost&logoColor=white) ![Plotly](https://img.shields.io/badge/Plotly-3F4F75?logo=plotly&logoColor=white) | [GitHub](https://github.com/aleksandrvolostnov/Fraud_detection) |
 
 ---
 
